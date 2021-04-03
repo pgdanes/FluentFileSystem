@@ -6,7 +6,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\FluentFile\FluentFileSystem.csproj" />
+    <ProjectReference Include="..\FluentFileSystem\FluentFileSystem.csproj" />
   </ItemGroup>
 
 </Project>

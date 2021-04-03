@@ -15,12 +15,20 @@ namespace FluentFileSystem
         int _depthLimit = int.MaxValue;
         bool _negateFilters = false;
 
+        /// <summary>
+        /// Constructor.
+        /// </summary>
+        /// <param name="fileSystem">The file system, if left null the query object will be made using the default file system.</param>
         public FileQuery(IFileSystem fileSystem = null)
         {
             fileSystem ??= new FileSystem();
             _fileSystem = fileSystem;
         }
 
+        /// <summary>
+        /// Add paths to find files within.
+        /// </summary>
+        /// <param name="paths">List of paths to search in.</param>
         public FileQuery InPaths(IEnumerable<string> paths)
         {
             _searchPaths.ForEach(path =>
@@ -32,6 +40,10 @@ namespace FluentFileSystem
             return this;
         }
 
+        /// <summary>
+        /// Add path to find files within.
+        /// </summary>
+        /// <param name="path">Path to search in.</param>
         public FileQuery InPath(string path)
         {
             return InPaths(new List<string>
@@ -40,6 +52,14 @@ namespace FluentFileSystem
             });
         }
 
+        /// <summary>
+        /// Add a filter to match the file'ss extension to a provided string. 
+        /// </summary>
+        /// <param name="extension">The extension name.</param>
+        /// <remarks>
+        /// Will accept extension specified with or without preceding full stop,
+        /// i.e. ".txt" and "txt" are both acceptable.
+        /// </remarks>
         public FileQuery WithExtension(string extension)
         {
             return WithExtension(new List<string>
@@ -48,6 +68,14 @@ namespace FluentFileSystem
             });
         }
 
+        /// <summary>
+        /// Add a filter where the file's extension matches a provided list.
+        /// </summary>
+        /// <param name="extensions">The extensions.</param>
+        /// <remarks>
+        /// Will accept extension specified with or without preceding full stop,
+        /// i.e. ".txt" and "txt" are both acceptable.
+        /// </remarks>
         public FileQuery WithExtension(IEnumerable<string> extensions)
         {
             var extensionsWithDot = extensions.Select(e => e.StartsWith(".") ? e : $".{e}");
@@ -55,48 +83,86 @@ namespace FluentFileSystem
             return this;
         }
 
+        /// <summary>
+        /// Add a filter where the file name matches a provided regex pattern.
+        /// </summary>
+        /// <param name="expression">The regex expression to match on.</param>
+        /// <remarks>
+        /// Expression matches on full file name including extension.
+        /// For filtering on extension solely <see cref="WithExtension(string)"/>
+        /// </remarks>
         public FileQuery Matching(Regex expression)
         {
             _filters.Add(filePath => expression.IsMatch(_fileSystem.Path.GetFileName(filePath)));
             return this;
         }
 
+        /// <summary>
+        /// Negates all specified filters.
+        /// </summary>
+        /// <remarks>
+        /// All filters are evaluated on a terminal method e.g. <see cref="Find"/>,
+        /// therefore this method is not required to occur after other filter methods to take affect.
+        /// </remarks>
         public FileQuery Not()
         {
             _negateFilters = true;
             return this;
         }
 
-        public FileQuery WhereLastWriteTime(Func<DateTime, bool> modifiedTestFunction)
+        /// <summary>
+        /// Add a filter where the file's last write time satisfies a provided function.
+        /// </summary>
+        /// <param name="modifiedTimeTestFunction">The function used to test the last accessed time.</param>
+        public FileQuery WhereLastWriteTime(Func<DateTime, bool> modifiedTimeTestFunction)
         {
-            _filters.Add(filePath => modifiedTestFunction(_fileSystem.File.GetLastWriteTime(filePath)));
+            _filters.Add(filePath => modifiedTimeTestFunction(_fileSystem.File.GetLastWriteTime(filePath)));
             return this;
         }
 
-        public FileQuery WhereLastAccessedTime(Func<DateTime, bool> accessedTestFunction)
+        /// <summary>
+        /// Add a filter where the file's last accessed time satisfies a provided function.
+        /// </summary>
+        /// <param name="accessedTimeTestFunction">The function used to test the last accessed time.</param>
+        public FileQuery WhereLastAccessedTime(Func<DateTime, bool> accessedTimeTestFunction)
         {
-            _filters.Add(filePath => accessedTestFunction(_fileSystem.File.GetLastAccessTime(filePath)));
+            _filters.Add(filePath => accessedTimeTestFunction(_fileSystem.File.GetLastAccessTime(filePath)));
             return this;
         }
 
-        public FileQuery WhereCreationTime(Func<DateTime, bool> createdTestFunction)
+        /// <summary>
+        /// Add a filter where the file's last accessed time satisfies a provided function.
+        /// </summary>
+        /// <param name="createdTimeTestFunction">The function used to test the creation time.</param>
+        public FileQuery WhereCreationTime(Func<DateTime, bool> createdTimeTestFunction)
         {
-            _filters.Add(filePath => createdTestFunction(_fileSystem.File.GetCreationTime(filePath)));
+            _filters.Add(filePath => createdTimeTestFunction(_fileSystem.File.GetCreationTime(filePath)));
             return this;
         }
 
+        /// <summary>
+        /// Add a filter where the file's size satisfies a provided function.
+        /// </summary>
+        /// <param name="sizeTestFunction">The function used to test the file size.</param>
         public FileQuery WhereSize(Func<long, bool> sizeTestFunction)
         {
             _filters.Add(filePath => sizeTestFunction(_fileSystem.FileInfo.FromFileName(filePath).Length));
             return this;
         }
 
+        /// <summary>
+        /// Specify a maximum sub-directory depth that files will be searched for in.
+        /// </summary>
+        /// <param name="depthLimit">The depth limit.</param>
         public FileQuery WithMaxDepthOf(int depthLimit)
         {
             _depthLimit = depthLimit;
             return this;
         }
 
+        /// <summary>
+        /// Find all files that match all the provided filters.
+        /// </summary>
         public IEnumerable<string> Find()
         {
             return _searchPaths.SelectMany(path => Find(path, _depthLimit, 0)).ToList();
